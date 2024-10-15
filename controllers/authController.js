@@ -1,46 +1,55 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const Product = require("../models/users");
-const user = require("./models/user");
+const User = require("../models/user");
 
 // Register
-exports.register = async (req,res) =>{
-    const { username, password} =req.body;
-    try{
-        const hashedPassword = await bcrypt.hash(password,10);
-        const user = new User({username,password:hashedPassword});
+exports.register = async (req, res) => {
+    const { user_name, password, name, role } = req.body;
+
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = new User({ user_name, password: hashedPassword ,name,role });
         await user.save();
-        res.status(201).send("User registeered");
-    }catch(err){
-        res.status(400).send(err.message);
+        res.status(201).send("User registered ");
+    } catch (err) {
+        res.status(500).send(err.message);
     }
 };
 
 // Login
 exports.login = async (req, res) => {
-    const { username, password } = req.body;
+    const { user_name, password } = req.body;
     try {
-        const user = await User.findOne({ username });
-        if (!user) return res.status(400).send("User not found");
+        console.log(user_name, password);
+        // res.json({user_name,password});
+        
+        const user = await User.findOne({ user_name });
+        if(!user) return res.status(400).send("User not found.");
+        // res.json(user);
+        // if (!user) return res.status(400).send("User not found");
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).send("Invalid credentials");
 
         const accessToken = jwt.sign(
             { userId: user._id },
             process.env.ACCESS_TOKEN_SECRET,
-            { expiresIn: "5m" }
+            { expiresIn: "1h" }
         );
-
+        
         const refreshToken = jwt.sign(
             { userId: user._id },
-            process.env.REFRESH_TOKEN_SECRET
+            process.env.REFRESH_TOKEN_SECRET // ชื่อของตัวแปรต้องตรงกับในไฟล์ .env
         );
-        res.json({ accessToken, refreshToken });
+
+        
+        res.json({ user, accessToken, refreshToken });
     } catch (err) {
         res.status(500).send(err.message);
     }
 };
+
 
 // Refresh
 exports.refresh = async (req, res) => {
@@ -51,7 +60,7 @@ exports.refresh = async (req, res) => {
         const accessToken = jwt.sign(
             { userId: user.userId },
             process.env.ACCESS_TOKEN_SECRET,
-            { expiresIn: "15m" }
+            { expiresIn: "1h" }
         );
         res.json({ accessToken });
     });
